@@ -1,5 +1,6 @@
 '''
-Module developed for applying TDA techniques to connected components of interest in a dataset. 
+Module developed for applying TDA techniques to connected components of interest in a dataset. This module is specially useful for datasets
+with too many points.
 '''
 
 
@@ -149,9 +150,7 @@ def DTM(data, max_len, component, components, dim = 1, topology_len = 1, m = 0.1
     
     return None
 
-
-
-def MergeTree(X, y):
+def MergeTree(X, y, label  = False):
     # Parameters
     infinity_plus = 0.1
     Vertices = range(len(X))
@@ -206,11 +205,16 @@ def MergeTree(X, y):
     #Make color list
     Vertices_permutation=np.array([Vertices[index[v]] for v in Vertices])
    
-    # Plot    
+    # Plot
     fig = plt.figure( figsize=(8,8) )
-    plt.scatter(np.array(Vertices)*0,Vertices_permutation, c = y, cmap = "jet", lw = 3)
-    #for v in Vertices:
-        #plt.text(-0.07, index[v], str(v))
+    if type(y) != type(None):
+        plt.scatter(np.array(Vertices)*0,Vertices_permutation, c = y, cmap = "jet", lw = 3)
+    else: 
+        plt.scatter(np.array(Vertices)*0,Vertices_permutation, lw = 3)
+        
+    if label == True:
+        for v in Vertices:
+            plt.text(-0.07, index[v], str(v))
     
     for v in Vertices:
         plt.arrow(0, index[v], merging_time[v], 0, color = 'grey',lw = 1)
@@ -218,10 +222,8 @@ def MergeTree(X, y):
     for v in Vertices:
         if merging[v] != None:
             plt.arrow(merging_time[v], index[v], 0, -index[v]+index[merging_union[v]], color = 'grey',lw = 1)
-  
-  
-  
-  
+            
+            
 class ConnectedComponent:
     '''
     Calculates topological information on dataset
@@ -368,3 +370,47 @@ class ConnectedComponent:
                            dim = dim, topology_len = topology_len, m = m, p = p)
         return None
     
+    #allows for analyzing the important topology of the set created through picking the mean of all connected componets
+    def representatives(self, max_len, treshold = None):
+        '''
+        Crates the dataset of mean points in each connected component cluster at a given thickening value equal to the
+        max length
+        '''
+        components_list =  self.connnected_components(max_len = max_len, treshold = treshold)
+        means = []
+        for component in components_list:
+            X_list = np.array([self.X[i] for i in component])
+            means.append(np.mean(X_list, axis = 0))
+        return means
+    
+    def Rips_representatives(self, max_len, treshold = None, dim = 1, topology_len = 1):
+        '''
+        Calculates Rips filtration of the dataset created by picking mean values of connected component as representatives
+        '''
+        data = self.representatives(max_len = max_len, treshold = treshold)
+        
+        rips = gudhi.RipsComplex(points = data, max_edge_length = topology_len)
+        st = rips.create_simplex_tree(max_dimension = dim)
+        barcodes = st.persistence(homology_coeff_field = 2)
+        fig = plt.figure(figsize=(15,5))
+        ax1 = fig.add_subplot(1,2,1); ax2 = fig.add_subplot(1,2,2)
+        gudhi.plot_persistence_barcode(barcodes, axes = ax1)
+        gudhi.plot_persistence_diagram(barcodes, axes = ax2)
+        plt.show()
+        return None
+    
+    def DTM_representatives(self, max_len, treshold = None, dim = 1, topology_len = 1, m = 0.1, p = 1):
+        '''
+        Calculates DTM filtration of the dataset created by picking mean values of connected component as representatives
+        '''
+        data = self.representatives(max_len = max_len, treshold = treshold)
+
+        st_DTM = velour.DTMFiltration(X, m, p, dimension_max = dim, filtration_max = topology_len)
+        velour.PlotPersistenceDiagram(st_DTM)  
+        return None
+    
+    def MergeTree_representatives(self, max_len, treshold = None, label = True):
+        data = self.representatives(max_len = max_len, treshold = treshold)        
+        MergeTree(data, y = None, label = True)
+
+        return None
