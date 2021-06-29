@@ -274,6 +274,9 @@ class ConnectedComponent:
         return components_lenghts_list
     
     def extract_component(self, max_len, component, treshold = None):
+        '''
+        Gives all points in a certain component of interest.
+        '''
         components_list =  self.connnected_components(max_len = max_len, treshold= treshold)
         return [self.X[i] for i in components_list[component]]
     
